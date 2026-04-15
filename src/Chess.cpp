@@ -1,127 +1,53 @@
-#include <iostream>
-#include <string>
-#include <chrono>
-#include <sstream>
-#include <thread>
+#include "chess.hpp"
+#include "functions.hpp"
 
-#ifdef _WIN32
-  #include <windows.h>
-#endif
-
-int find(const char arr[], int len, char seek)
+void Chess::convertToCoords(int pos, int& x, int& y)
 {
-    for (int i = 0; i < len; ++i)
-    {
-        if (arr[i] == seek) return i;
-    }
-    return -1;
+    x = pos / sideSize;
+    y = pos % sideSize;
 }
 
-void ClearScreen()
+void Chess::convertToPos(int x, int y, int& pos)
 {
-#ifdef _WIN32
-    HANDLE                     hStdOut;
-    CONSOLE_SCREEN_BUFFER_INFO csbi;
-    DWORD                      count;
-    DWORD                      cellCount;
-    COORD                      homeCoords = { 0, 0 };
-
-    hStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
-    if (hStdOut == INVALID_HANDLE_VALUE) return;
-
-    if (!GetConsoleScreenBufferInfo(hStdOut, &csbi)) return;
-    cellCount = csbi.dwSize.X * csbi.dwSize.Y;
-
-    if (!FillConsoleOutputCharacter(
-        hStdOut,
-        (TCHAR)' ',
-        cellCount,
-        homeCoords,
-        &count
-    )) return;
-
-    if (!FillConsoleOutputAttribute(
-        hStdOut,
-        csbi.wAttributes,
-        cellCount,
-        homeCoords,
-        &count
-    )) return;
-
-    SetConsoleCursorPosition(hStdOut, homeCoords);
-#else
-    // ANSI escape code: clear screen and move cursor to home
-    std::cout << "\033[2J\033[H";
-#endif
+    pos = x * sideSize + y;
 }
 
-void CrossSleep(int milliseconds)
-{
-    std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds));
-}
-
-int abs(int value)
-{
-    uint32_t temp = value >> 31;
-    value ^= temp;
-    value += temp & 1;
-    return value;
-}
-
-class Chess
-{
-private:
-    const int sideSize = 8;
-    bool canDoEnPassantWhite, canDoEnPassantBlack, turn;
-    int enPassantAt, board[64];
-
-public:
-    bool gameOn;
-    std::string PGN;
-    const char pairs[16];
-    const char coordsX[8];
-    const char coordsY[8];
-    static const short black = 0b1000,
-          king = 0b111,
-          queen = 0b110,
-          rook = 0b100,
-          bishop = 0b011,
-          knight = 0b010,
-          pawn = 0b001;
-    Chess();
-
-    bool checkChessMovement(int piece, int from, int x, int y);
-    bool checkHorizontalMove(int x, int y);
-    bool checkDiagonalMove(int x, int y);
-    bool checkKnightMove(int x, int y);
-    bool checkPawnMove(int from, int x, int y);
-    bool checkSpaceEmpty(int from, int x, int y);
-    void moveChess(int from, int to);
-    void printBoard();
-    std::string coords(int from, int end);
-};
-
-bool Chess::checkHorizontalMove(int x, int y)
+bool Chess::checkIfHorizontalMove(int x, int y)
 {
     return ((x == 0 && abs(y) >= 0) || (y == 0 && abs(x) >= 0));
 }
 
-bool Chess::checkDiagonalMove(int x, int y)
+bool Chess::checkIfDiagonalMove(int x, int y)
 {
     return (x == y);
 }
 
 bool Chess::checkSpaceEmpty(int from, int x, int y)
 {
-    int i;
-    if (!(((board[from] ^ knight) == 0) || ((board[from] ^ knight) == black)))
-        for (i = 1; i < x; i++)
-            if (board[from + i * sideSize] != 0) return false;
-    if (board[from] & black)
+    int i, j, xcorr = -1, ycorr = -1;
+    if (!((board[from] ^ knight == white) || (board[from] ^ knight == black)))
     {
-        return board[from + y + x * sideSize] == 0 || !(board[from + y + x * sideSize] & black);
+        int fx, fy, dx, dy;
+        convertToCoords(from, fx, fy);
+
+        dx = fx - x;
+        dy = fy - y;
+
+        if (dx < 0) dx = -dx;
+        else xcorr = 1;
+        
+        if (dy < 0) dy = -dy;
+        else ycorr = 1;
+
+        for (i = 1; i < x; i++)
+            for (j = 1; j < y; j++)
+                if (board[from + xcorr * i * sideSize + ycorr * j] != empty) return false;
     }
-    return board[from + y + x * sideSize] == 0 || board[from + y + x * sideSize] & black;
+
+    if (board[from] & black)
+        return board[from + y + x * sideSize] == empty || !(board[from + y + x * sideSize] & black);
+    
+    return board[from + y + x * sideSize] == empty || board[from + y + x * sideSize] & black;
 }
 
 bool Chess::checkKnightMove(int x, int y)
@@ -131,12 +57,12 @@ bool Chess::checkKnightMove(int x, int y)
 
 bool Chess::checkPawnMove(int from, int x, int y)
 {
-    if (canDoEnPassantWhite && turn) canDoEnPassantWhite = false;
-    if (canDoEnPassantBlack && !turn) canDoEnPassantBlack = false;
+    canDoEnPassant = false;
     if (board[from] & Chess::black)
     {
         if ((x == y) && (abs(x) == 1) && !(board[from + y + x * sideSize] & black) && (board[from + y + x * sideSize] != 0)) return true;
-        if (canDoEnPassantBlack && (x == y) && (abs(x) == 1) && !(board[enPassantAt] & black) && ((from + 1 == enPassantAt) || (from - 1 == enPassantAt)))
+
+        if (canDoEnPassant && (x == y) && (abs(x) == 1) && !(board[enPassantAt] & black) && ((from + 1 == enPassantAt) || (from - 1 == enPassantAt)))
         {
             board[enPassantAt] = 0;
             return true;
@@ -144,7 +70,7 @@ bool Chess::checkPawnMove(int from, int x, int y)
         if (y != 0) return false;
         if ((from / 8 == 1) && x == 2)
         {
-            canDoEnPassantWhite = true;
+            canDoEnPassant = true;
             enPassantAt = from + y + x * sideSize;
             return true;
         }
@@ -153,7 +79,8 @@ bool Chess::checkPawnMove(int from, int x, int y)
     else
     {
         if ((x == y) && (abs(x) == 1) && (board[from + y + x * sideSize] & black)) return true;
-        if (canDoEnPassantWhite && (x == y) && (abs(x) == 1) && (board[enPassantAt] & black) && ((from + 1 == enPassantAt) || (from - 1 == enPassantAt)))
+        
+        if (canDoEnPassant && (x == y) && (abs(x) == 1) && (board[enPassantAt] & black) && ((from + 1 == enPassantAt) || (from - 1 == enPassantAt)))
         {
             board[enPassantAt] = 0;
             return true;
@@ -161,13 +88,13 @@ bool Chess::checkPawnMove(int from, int x, int y)
         if (y != 0) return false;
         if ((from / 8 == 6) && x == -2)
         {
-            canDoEnPassantBlack = true;
+            canDoEnPassant = true;
             enPassantAt = from + y + x * sideSize;
             return true;
         }
         if (x == -1) return true;
     }
-    turn = !turn; // Bug fix: was "turn != turn;" which had no effect
+    turn = !turn;
     return false;
 }
 
@@ -180,13 +107,13 @@ bool Chess::checkChessMovement(int piece, int from, int x, int y)
         return (abs(x) <= 1 && abs(y) <= 1 && checkSpaceEmpty(from, x, y));
     case queen:
     case queen + black:
-        return ((checkDiagonalMove(x, y) || checkHorizontalMove(x, y)) && checkSpaceEmpty(from, x, y));
+        return ((checkIfDiagonalMove(x, y) || checkIfHorizontalMove(x, y)) && checkSpaceEmpty(from, x, y));
     case rook:
     case rook + black:
-        return (checkHorizontalMove(x, y) && checkSpaceEmpty(from, x, y));
+        return (checkIfHorizontalMove(x, y) && checkSpaceEmpty(from, x, y));
     case bishop:
     case bishop + black:
-        return (checkDiagonalMove(x, y) && checkSpaceEmpty(from, x, y));
+        return (checkIfDiagonalMove(x, y) && checkSpaceEmpty(from, x, y));
     case knight:
     case knight + black:
         return (checkKnightMove(x, y) && checkSpaceEmpty(from, x, y));
@@ -220,12 +147,11 @@ void Chess::printBoard()
     std::cout << std::endl << std::endl;
 }
 
-Chess::Chess() : pairs{ ' ', 'p', 'n', 'b', 'r', ' ', 'q', 'k', ' ', 'p', 'N', 'B', 'R', ' ', 'Q', 'K' }, coordsX{ '1', '2', '3', '4', '5', '6', '7', '8' }, coordsY{ 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h' }
+Chess::Chess() : pairs{ ' ', 'p', 'n', 'b', 'r', ' ', 'q', 'k', ' ', 'P', 'N', 'B', 'R', ' ', 'Q', 'K' }, coordsX{ '1', '2', '3', '4', '5', '6', '7', '8' }, coordsY{ 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h' }
 {
     turn = true;
-    gameOn = false; // Initialize gameOn
-    canDoEnPassantWhite = false;
-    canDoEnPassantBlack = false;
+    gameOn = false; // Initialize gameOn, debug on false for specific movements
+    canDoEnPassant = false;
     enPassantAt = -1;
     for (int i = 0; i < 64; i++)
     {
@@ -261,21 +187,21 @@ Chess::Chess() : pairs{ ' ', 'p', 'n', 'b', 'r', ' ', 'q', 'k', ' ', 'p', 'N', '
             break;
         case 63:
         case 56:
-            board[i] = Chess::rook;
+            board[i] = Chess::white + Chess::rook;
             break;
         case 62:
         case 57:
-            board[i] = Chess::knight;
+            board[i] = Chess::white + Chess::knight;
             break;
         case 61:
         case 58:
-            board[i] = Chess::bishop;
+            board[i] = Chess::white + Chess::bishop;
             break;
         case 59:
-            board[i] = Chess::queen;
+            board[i] = Chess::white + Chess::queen;
             break;
         case 60:
-            board[i] = Chess::king;
+            board[i] = Chess::white + Chess::king;
             break;
         case 48:
         case 49:
@@ -285,7 +211,7 @@ Chess::Chess() : pairs{ ' ', 'p', 'n', 'b', 'r', ' ', 'q', 'k', ' ', 'p', 'N', '
         case 53:
         case 54:
         case 55:
-            board[i] = Chess::pawn;
+            board[i] = Chess::white + Chess::pawn;
             break;
         default:
             board[i] = 0;
@@ -311,7 +237,9 @@ std::string Chess::coords(int from, int end)
 
 void Chess::moveChess(int from, int to)
 {
-    int x = (to / 8) - (from / 8), y = (to % 8) - (from % 8);
+    int x = (to / 8) - (from / 8),
+        y = (to % 8) - (from % 8);
+    
     if (checkChessMovement(board[from], from, x, y))
     {
         PGN += coords(from, to) + (std::string)" ";
@@ -320,49 +248,3 @@ void Chess::moveChess(int from, int to)
     }
 }
 
-int main()
-{
-    Chess chess;
-    std::string position;
-    int x, y, piece;
-    while (chess.gameOn)
-    {
-        chess.printBoard();
-        std::cout << "Choose a movement to do (e3, e4): " << std::endl;
-        try
-        {
-            std::cin >> position;
-            y = find(chess.coordsY, sizeof(chess.coordsY) / sizeof(char), position[0]);
-            if (y == -1)
-            {
-                piece = find(chess.pairs, sizeof(chess.pairs) / sizeof(char), position[0]);
-                y = find(chess.coordsY, sizeof(chess.coordsY) / sizeof(char), position[1]);
-                x = find(chess.coordsX, sizeof(chess.coordsX) / sizeof(char), position[2]);
-            }
-            else
-            {
-                piece = chess.pawn;
-                x = find(chess.coordsX, sizeof(chess.coordsX) / sizeof(char), position[1]);
-            }
-        }
-        catch (int num)
-        {
-            std::cout << "Use PGN notation" << std::endl;
-        }
-    }
-    chess.printBoard();
-    chess.moveChess(3 + 1 * 8, 3 + 3 * 8);
-    chess.printBoard();
-    CrossSleep(1000);
-    chess.moveChess(3 + 3 * 8, 3 + 4 * 8);
-    chess.printBoard();
-    CrossSleep(1000);
-    chess.moveChess(4 + 6 * 8, 4 + 4 * 8);
-    chess.printBoard();
-    CrossSleep(1000);
-    chess.moveChess(3 + 4 * 8, 4 + 5 * 8);
-    chess.printBoard();
-    CrossSleep(1000);
-    std::cout << chess.PGN;
-    return 0;
-}
