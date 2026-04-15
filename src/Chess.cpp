@@ -56,50 +56,49 @@ bool Chess::checkKnightMove(int x, int y)
 }
 
 bool Chess::checkPawnMove(int from, int x, int y)
-{
-    canDoEnPassant = false;
-    if (board[from] & Chess::black)
-    {
-        if ((x == y) && (abs(x) == 1) && !(board[from + y + x * sideSize] & black) && (board[from + y + x * sideSize] != 0)) return true;
+{   
+    int fx, fy;
+    if ((x == y) && (abs(x) == 1) && ((board[from + y + x * sideSize] ^ board[from]) & diffColor) && (board[from + y + x * sideSize] != empty)) return true;
 
-        if (canDoEnPassant && (x == y) && (abs(x) == 1) && !(board[enPassantAt] & black) && ((from + 1 == enPassantAt) || (from - 1 == enPassantAt)))
+    if (canDoEnPassant && (x == y) && (abs(x) == 1) && ((board[from + y] ^ board[from]) & diffColor) && ((from + 1 == enPassantAt) || (from - 1 == enPassantAt)))
+    {
+        board[enPassantAt] = 0;
+        canDoEnPassant = false;
+        return true;
+    }
+    canDoEnPassant = false;
+
+    convertToCoords(from, fx, fy);
+
+    if (y != 0) return false;
+
+    if (abs(x) == 2)
+    {
+        if (((board[from] & black) && (fx != 1)) || ((board[from] & white) && (fx != 6)))
         {
-            board[enPassantAt] = 0;
-            return true;
+            return false;
         }
-        if (y != 0) return false;
-        if ((from / 8 == 1) && x == 2)
-        {
-            canDoEnPassant = true;
-            enPassantAt = from + y + x * sideSize;
-            return true;
-        }
+        canDoEnPassant = true;
+        enPassantAt = from + y + x * sideSize;
+        return true;
+    }
+
+    if (board[from] & black)
+    {
         if (x == 1) return true;
     }
     else
     {
-        if ((x == y) && (abs(x) == 1) && (board[from + y + x * sideSize] & black)) return true;
-        
-        if (canDoEnPassant && (x == y) && (abs(x) == 1) && (board[enPassantAt] & black) && ((from + 1 == enPassantAt) || (from - 1 == enPassantAt)))
-        {
-            board[enPassantAt] = 0;
-            return true;
-        }
-        if (y != 0) return false;
-        if ((from / 8 == 6) && x == -2)
-        {
-            canDoEnPassant = true;
-            enPassantAt = from + y + x * sideSize;
-            return true;
-        }
         if (x == -1) return true;
     }
+    
     turn = !turn;
     return false;
 }
 
 bool Chess::checkChessMovement(int piece, int from, int x, int y)
 {
+    if (piece == empty) return false;
     switch (piece)
     {
     case king:
@@ -220,7 +219,7 @@ Chess::Chess() : pairs{ ' ', 'p', 'n', 'b', 'r', ' ', 'q', 'k', ' ', 'P', 'N', '
     auto now = std::chrono::system_clock::now();
     auto time = std::chrono::system_clock::to_time_t(now);
     std::ostringstream stream;
-    stream << "[EVENT \"Computer Test\"]\n[Site \"Online\"]\n[Date \"" << std::ctime(&time) << "]\n[Result \"0-0\"]\n[White \"Computer 1\"]\n[Black \"Computer 2\"]\n";
+    stream << "[EVENT \"Computer Test\"]\n[Site \"Online\"]\n[Date \"" << std::ctime(&time) << "\"]\n[Result \"0-0\"]\n[White \"Computer 1\"]\n[Black \"Computer 2\"]\n";
     PGN = stream.str();
 }
 
@@ -237,8 +236,8 @@ std::string Chess::coords(int from, int end)
 
 void Chess::moveChess(int from, int to)
 {
-    int x = (to / 8) - (from / 8),
-        y = (to % 8) - (from % 8);
+    int x = (to / sideSize) - (from / sideSize),
+        y = (to % sideSize) - (from % sideSize);
     
     if (checkChessMovement(board[from], from, x, y))
     {

@@ -19,6 +19,7 @@ public:
     const char coordsY[8];
     static const short black = 0b1000,
           white = 0b0000, // created for clarity
+          diffColor = 0b1000, // created for clarity
           empty = 0b0000, // created for clarity
           king = 0b111,
           queen = 0b110,

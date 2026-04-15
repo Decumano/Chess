@@ -31,19 +31,42 @@ int main()
             std::cout << "Use PGN notation" << std::endl;
         }
     }
+    /*
     chess.printBoard();
     chess.moveChess(3 + 1 * 8, 3 + 3 * 8);
     chess.printBoard();
+    
     CrossSleep(1000);
     chess.moveChess(3 + 3 * 8, 3 + 4 * 8);
     chess.printBoard();
+
     CrossSleep(1000);
     chess.moveChess(4 + 6 * 8, 4 + 4 * 8);
     chess.printBoard();
+    
     CrossSleep(1000);
     chess.moveChess(3 + 4 * 8, 4 + 5 * 8);
     chess.printBoard();
     CrossSleep(1000);
+    */
+    
+    chess.printBoard();
+    chess.moveChess(4 + 6 * 8, 4 + 4 * 8);
+    chess.printBoard();
+    
+    CrossSleep(1000);
+    chess.moveChess(4 + 4 * 8, 4 + 3 * 8);
+    chess.printBoard();
+
+    CrossSleep(1000);
+    chess.moveChess(3 + 1 * 8, 3 + 3 * 8);
+    chess.printBoard();
+    
+    CrossSleep(1000);
+    chess.moveChess(4 + 3 * 8, 3 + 2 * 8);
+    chess.printBoard();
+    CrossSleep(1000);
+    
     std::cout << chess.PGN;
     return 0;
 }
