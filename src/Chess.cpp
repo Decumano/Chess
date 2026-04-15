@@ -1,10 +1,12 @@
-// Chess.cpp : Este archivo contiene la función "main". La ejecución del programa comienza y termina ahí.
-//
-
 #include <iostream>
-#include <windows.h>
 #include <string>
 #include <chrono>
+#include <sstream>
+#include <thread>
+
+#ifdef _WIN32
+  #include <windows.h>
+#endif
 
 int find(const char arr[], int len, char seek)
 {
@@ -17,6 +19,7 @@ int find(const char arr[], int len, char seek)
 
 void ClearScreen()
 {
+#ifdef _WIN32
     HANDLE                     hStdOut;
     CONSOLE_SCREEN_BUFFER_INFO csbi;
     DWORD                      count;
@@ -26,11 +29,9 @@ void ClearScreen()
     hStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
     if (hStdOut == INVALID_HANDLE_VALUE) return;
 
-    /* Get the number of cells in the current buffer */
     if (!GetConsoleScreenBufferInfo(hStdOut, &csbi)) return;
     cellCount = csbi.dwSize.X * csbi.dwSize.Y;
 
-    /* Fill the entire buffer with spaces */
     if (!FillConsoleOutputCharacter(
         hStdOut,
         (TCHAR)' ',
@@ -39,7 +40,6 @@ void ClearScreen()
         &count
     )) return;
 
-    /* Fill the entire buffer with the current colors and attributes */
     if (!FillConsoleOutputAttribute(
         hStdOut,
         csbi.wAttributes,
@@ -48,15 +48,23 @@ void ClearScreen()
         &count
     )) return;
 
-    /* Move the cursor home */
     SetConsoleCursorPosition(hStdOut, homeCoords);
+#else
+    // ANSI escape code: clear screen and move cursor to home
+    std::cout << "\033[2J\033[H";
+#endif
+}
+
+void CrossSleep(int milliseconds)
+{
+    std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds));
 }
 
 int abs(int value)
 {
-    uint32_t temp = value >> 31;     // make a mask of the sign bit
-    value ^= temp;                   // toggle the bits if value is negative
-    value += temp & 1;               // add one if value was negative
+    uint32_t temp = value >> 31;
+    value ^= temp;
+    value += temp & 1;
     return value;
 }
 
@@ -73,7 +81,7 @@ public:
     const char pairs[16];
     const char coordsX[8];
     const char coordsY[8];
-    static const short black = 0b1000, // white = 0b0
+    static const short black = 0b1000,
           king = 0b111,
           queen = 0b110,
           rook = 0b100,
@@ -121,13 +129,13 @@ bool Chess::checkKnightMove(int x, int y)
     return ((abs(y) == 2 && abs(x) == 1) || (abs(x) == 2 && abs(y) == 1));
 }
 
-bool Chess::checkPawnMove(int from, int x, int y) 
+bool Chess::checkPawnMove(int from, int x, int y)
 {
     if (canDoEnPassantWhite && turn) canDoEnPassantWhite = false;
     if (canDoEnPassantBlack && !turn) canDoEnPassantBlack = false;
     if (board[from] & Chess::black)
     {
-        if ((x == y) && (abs(x) == 1) && !(board[from + y + x * sideSize] & black) && (board[from +y + x * sideSize] != 0)) return true;
+        if ((x == y) && (abs(x) == 1) && !(board[from + y + x * sideSize] & black) && (board[from + y + x * sideSize] != 0)) return true;
         if (canDoEnPassantBlack && (x == y) && (abs(x) == 1) && !(board[enPassantAt] & black) && ((from + 1 == enPassantAt) || (from - 1 == enPassantAt)))
         {
             board[enPassantAt] = 0;
@@ -159,7 +167,7 @@ bool Chess::checkPawnMove(int from, int x, int y)
         }
         if (x == -1) return true;
     }
-    turn != turn;
+    turn = !turn; // Bug fix: was "turn != turn;" which had no effect
     return false;
 }
 
@@ -202,7 +210,7 @@ void Chess::printBoard()
         {
             if (j == 0)
                 std::cout << "  ";
-            std::cout << pairs[board[j + sideSize*i]] << "  |  ";
+            std::cout << pairs[board[j + sideSize * i]] << "  |  ";
             if (j == 7)
             {
                 std::cout << std::endl << "------------------------------------------------" << std::endl;
@@ -212,9 +220,13 @@ void Chess::printBoard()
     std::cout << std::endl << std::endl;
 }
 
-Chess::Chess() : pairs { ' ', 'p', 'n', 'b', 'r', ' ', 'q', 'k', ' ', 'p', 'N', 'B', 'R', ' ', 'Q', 'K'}, coordsX{'1', '2', '3', '4', '5', '6', '7', '8'}, coordsY{'a', 'b', 'c', 'd','e','f', 'g', 'h'}
+Chess::Chess() : pairs{ ' ', 'p', 'n', 'b', 'r', ' ', 'q', 'k', ' ', 'p', 'N', 'B', 'R', ' ', 'Q', 'K' }, coordsX{ '1', '2', '3', '4', '5', '6', '7', '8' }, coordsY{ 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h' }
 {
     turn = true;
+    gameOn = false; // Initialize gameOn
+    canDoEnPassantWhite = false;
+    canDoEnPassantBlack = false;
+    enPassantAt = -1;
     for (int i = 0; i < 64; i++)
     {
         switch (i)
@@ -279,9 +291,10 @@ Chess::Chess() : pairs { ' ', 'p', 'n', 'b', 'r', ' ', 'q', 'k', ' ', 'p', 'N', 
             board[i] = 0;
         }
     }
-    auto local = std::chrono::zoned_time{ std::chrono::current_zone(), std::chrono::system_clock::now() };
+    auto now = std::chrono::system_clock::now();
+    auto time = std::chrono::system_clock::to_time_t(now);
     std::ostringstream stream;
-    stream << "[EVENT \"Computer Test\"]\n[Site \"Online\"]\n[Date \"" << local << "]\n[Result \"0-0\"]\n[White \"Computer 1\"]\n[Black \"Computer 2\"]\n";
+    stream << "[EVENT \"Computer Test\"]\n[Site \"Online\"]\n[Date \"" << std::ctime(&time) << "]\n[Result \"0-0\"]\n[White \"Computer 1\"]\n[Black \"Computer 2\"]\n";
     PGN = stream.str();
 }
 
@@ -319,7 +332,7 @@ int main()
         try
         {
             std::cin >> position;
-            y = find(chess.coordsY, sizeof(chess.coordsY)/sizeof(char), position[0]);
+            y = find(chess.coordsY, sizeof(chess.coordsY) / sizeof(char), position[0]);
             if (y == -1)
             {
                 piece = find(chess.pairs, sizeof(chess.pairs) / sizeof(char), position[0]);
@@ -332,34 +345,24 @@ int main()
                 x = find(chess.coordsX, sizeof(chess.coordsX) / sizeof(char), position[1]);
             }
         }
-        catch(int num)
+        catch (int num)
         {
             std::cout << "Use PGN notation" << std::endl;
         }
     }
     chess.printBoard();
-    chess.moveChess(3 + 1 * 8,3 + 3 * 8);
+    chess.moveChess(3 + 1 * 8, 3 + 3 * 8);
     chess.printBoard();
-    Sleep(1000);
+    CrossSleep(1000);
     chess.moveChess(3 + 3 * 8, 3 + 4 * 8);
     chess.printBoard();
-    Sleep(1000);
+    CrossSleep(1000);
     chess.moveChess(4 + 6 * 8, 4 + 4 * 8);
     chess.printBoard();
-    Sleep(1000);
+    CrossSleep(1000);
     chess.moveChess(3 + 4 * 8, 4 + 5 * 8);
     chess.printBoard();
-    Sleep(1000);
+    CrossSleep(1000);
     std::cout << chess.PGN;
     return 0;
 }
-
-// Ejecutar programa: Ctrl + F5 o menú Depurar > Iniciar sin depurar
-// Depurar programa: F5 o menú Depurar > Iniciar depuración
-
-// Sugerencias para primeros pasos: 1. Use la ventana del Explorador de soluciones para agregar y administrar archivos
-//   2. Use la ventana de Team Explorer para conectar con el control de código fuente
-//   3. Use la ventana de salida para ver la salida de compilación y otros mensajes
-//   4. Use la ventana Lista de errores para ver los errores
-//   5. Vaya a Proyecto > Agregar nuevo elemento para crear nuevos archivos de código, o a Proyecto > Agregar elemento existente para agregar archivos de código existentes al proyecto
-//   6. En el futuro, para volver a abrir este proyecto, vaya a Archivo > Abrir > Proyecto y seleccione el archivo .sln
