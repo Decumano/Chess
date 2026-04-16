@@ -49,11 +49,9 @@ int main()
     chess.printBoard();
     CrossSleep(1000);
     */
-    
     chess.printBoard();
     chess.moveChess(4 + 6 * 8, 4 + 4 * 8);
     chess.printBoard();
-    
     CrossSleep(1000);
     chess.moveChess(4 + 4 * 8, 4 + 3 * 8);
     chess.printBoard();
@@ -65,8 +63,38 @@ int main()
     CrossSleep(1000);
     chess.moveChess(4 + 3 * 8, 3 + 2 * 8);
     chess.printBoard();
+    
+    CrossSleep(1000);
+    chess.moveChess(5 + 6 * 8, 4 + 6 * 8);
+    chess.printBoard();
+    
+    CrossSleep(1000);
+    chess.moveChess(5 + 6 * 8, 6 + 7 * 8);
+    chess.printBoard();
+    
+    CrossSleep(1000);
+    chess.moveChess(5 + 6 * 8, 4 + 7 * 8);
+    chess.printBoard();
+
+    CrossSleep(1000);
+    chess.moveChess(3 + 7 * 8, 7 + 3 * 8);
+    chess.printBoard();
+    
+    CrossSleep(1000);
+    chess.moveChess(5 + 6 * 8, 5 + 5 * 8);
+    chess.printBoard();
+    
+    CrossSleep(1000);
+    chess.moveChess(5 + 5 * 8, 6 + 5 * 8);
+    chess.printBoard();
+
+    CrossSleep(1000);
+    chess.moveChess(7 + 3 * 8, 3 + 7 * 8);
+    chess.printBoard();
+    
     CrossSleep(1000);
     
     std::cout << chess.PGN;
+
     return 0;
 }

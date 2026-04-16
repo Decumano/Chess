@@ -55,6 +55,8 @@ void CrossSleep(int milliseconds)
 
 int abs(int value)
 {
-    if (value < 0) return -value;
+    uint32_t temp = value >> 31;
+    value ^= temp;
+    value += temp & 1;
     return value;
 }

@@ -7,9 +7,9 @@
 class Chess
 {
 private:
-    const int sideSize = 8;
+    const short sideSize = 8;
     bool canDoEnPassant, turn;
-    int enPassantAt, board[64];
+    short enPassantAt, board[64];
 
 public:
     bool gameOn;
@@ -29,15 +29,15 @@ public:
           pawn = 0b001;
     Chess();
 
-    bool checkChessMovement(int piece, int from, int x, int y);
-    bool checkIfHorizontalMove(int x, int y);
-    bool checkIfDiagonalMove(int x, int y);
-    bool checkKnightMove(int x, int y);
-    bool checkPawnMove(int from, int x, int y);
-    bool checkSpaceEmpty(int from, int x, int y);
-    void moveChess(int from, int to);
+    bool checkChessMovement(short piece, short from, short x, short y);
+    bool checkIfHorizontalMove(short x, short y);
+    bool checkIfDiagonalMove(short x, short y);
+    bool checkKnightMove(short x, short y);
+    bool checkPawnMove(short from, short x, short y);
+    bool checkSpaceEmpty(short from, short x, short y);
+    void moveChess(short from, short to);
     void printBoard();
-    void convertToCoords(int pos, int& x, int& y);
-    void convertToPos(int x, int y, int& pos);
-    std::string coords(int from, int end);
+    void convertToCoords(short pos, short& x, short& y);
+    void convertToPos(short x, short y, short& pos);
+    std::string coords(short from, short end);
 };
